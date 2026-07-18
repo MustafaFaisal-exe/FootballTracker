@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.pitch_view import PitchView
 from config import YOUTUBE_URL, QUALITY_OPTIONS, MAX_STREAM_HEIGHT
 from ui.worker import TrackerWorker
 
@@ -51,6 +52,16 @@ class MainWindow(QMainWindow):
 
         self.status_label = QLabel("Idle")
 
+        self.pitch_view = PitchView(
+            "assets/pitch.png",
+            width=500,
+            height=320,
+            keep_aspect=True,
+            parent=self.video_label,
+        )
+        self._reposition_pitch_view()
+        self.pitch_view.hide()
+
         controls = QHBoxLayout()
         controls.addWidget(self.url_input)
         controls.addWidget(self.quality_combo)
@@ -65,6 +76,21 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
+
+    def _reposition_pitch_view(self):
+        label_w = self.video_label.width()
+        label_h = self.video_label.height()
+        pitch_w = self.pitch_view.width()
+        pitch_h = self.pitch_view.height()
+
+        x = (label_w - pitch_w) // 2
+        y = label_h - pitch_h - 16
+        self.pitch_view.move(x, y)
+        self.pitch_view.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._reposition_pitch_view()
 
     def start_tracking(self):
         url = self.url_input.text().strip()
@@ -92,6 +118,7 @@ class MainWindow(QMainWindow):
 
     @Slot(object, float, int)
     def on_frame_ready(self, frame_bgr, fps, track_count):
+        self.pitch_view.show()
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         h, w, ch = frame_rgb.shape
         qimg = QImage(frame_rgb.data, w, h, ch * w, QImage.Format_RGB888)
@@ -105,6 +132,8 @@ class MainWindow(QMainWindow):
         self.video_label.setPixmap(pixmap)
         self.status_label.setText(f"{fps:.1f} FPS  |  {track_count} active tracks")
 
+        self._reposition_pitch_view()
+
     @Slot(str)
     def on_status(self, message):
         self.status_label.setText(message)
@@ -115,6 +144,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_finished(self):
+        self.pitch_view.hide()
+
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         self.url_input.setEnabled(True)
