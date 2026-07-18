@@ -1,0 +1,45 @@
+# --- Virtual environment ---
+venv/
+env/
+.venv/
+
+# --- Python bytecode / cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Packaging / build artifacts ---
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Model weights (large binary files, keep out of git) ---
+models/*.onnx
+models/*.pt
+models/*.weights
+
+# --- Environment / secrets ---
+.env
+.env.*
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Logs / runtime output ---
+*.log
+*.mp4
+*.avi
+output/
+
+# --- Testing / coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
