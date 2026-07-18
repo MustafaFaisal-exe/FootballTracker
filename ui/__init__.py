@@ -1,0 +1,1 @@
+"""PySide6 GUI package. No CV/tracking algorithm code lives here."""
