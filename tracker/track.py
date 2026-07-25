@@ -4,13 +4,14 @@ _track_id_counter = 0
 
 
 class Track:
-    def __init__(self, box, label, score, color=None):
+    def __init__(self, box, label, score, color=None, team=None):
         global _track_id_counter
         _track_id_counter += 1
         self.id = _track_id_counter
         self.label = label
         self.score = score
         self.color = color
+        self.team = team
 
         x, y, w, h = box
         cx, cy = x + w / 2, y + h / 2
@@ -32,7 +33,7 @@ class Track:
         self.age += 1
         self.time_since_update += 1
 
-    def update(self, box, score, color=None):
+    def update(self, box, score, color=None, team=None):
         x, y, w, h = box
         cx, cy = x + w / 2, y + h / 2
         self.kx.update(cx)
@@ -42,6 +43,8 @@ class Track:
         self.score = score
         if color is not None:
             self.color = color
+        if team is not None:
+            self.team = team
         self.hits += 1
         self.time_since_update = 0
 

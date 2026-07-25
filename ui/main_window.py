@@ -45,6 +45,19 @@ class MainWindow(QMainWindow):
         self.stop_btn.clicked.connect(self.stop_tracking)
         self.stop_btn.setEnabled(False)
 
+        self.calibrate_btn = QPushButton("Detect Team Colors")
+        self.calibrate_btn.setEnabled(False)
+        self.calibrate_btn.clicked.connect(self.request_calibration)
+
+        self.team_a_btn = QPushButton("Team A")
+        self.team_b_btn = QPushButton("Team B")
+        self.team_a_btn.setEnabled(False)
+        self.team_b_btn.setEnabled(False)
+        self.team_a_btn.clicked.connect(lambda: self.select_team("A"))
+        self.team_b_btn.clicked.connect(lambda: self.select_team("B"))
+        self._set_team_button_style("A", "#ffff00", selected=True)
+        self._set_team_button_style("B", "#ff00ff", selected=False)
+
         self.video_label = QLabel("No video loaded")
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setStyleSheet("background-color: #111; color: #888;")
@@ -54,8 +67,8 @@ class MainWindow(QMainWindow):
 
         self.pitch_view = PitchView(
             "assets/pitch.png",
-            width=500,
-            height=320,
+            width=250,
+            height=160,
             keep_aspect=True,
             parent=self.video_label,
         )
@@ -67,6 +80,9 @@ class MainWindow(QMainWindow):
         controls.addWidget(self.quality_combo)
         controls.addWidget(self.start_btn)
         controls.addWidget(self.stop_btn)
+        controls.addWidget(self.calibrate_btn)
+        controls.addWidget(self.team_a_btn)
+        controls.addWidget(self.team_b_btn)
 
         layout = QVBoxLayout()
         layout.addLayout(controls)
@@ -108,9 +124,35 @@ class MainWindow(QMainWindow):
         self.worker = TrackerWorker(url, max_height=max_height)
         self.worker.frame_ready.connect(self.on_frame_ready)
         self.worker.status.connect(self.on_status)
+        self.worker.team_colors_ready.connect(self.on_team_colors_ready)
+        self.worker.calibration_state.connect(self.on_calibration_state)
         self.worker.error.connect(self.on_error)
         self.worker.finished_playing.connect(self.on_finished)
+        self.calibrate_btn.setEnabled(True)
         self.worker.start()
+
+    def request_calibration(self):
+        if self.worker is not None and self.worker.isRunning():
+            self.calibrate_btn.setEnabled(False)
+            self.team_a_btn.setEnabled(False)
+            self.team_b_btn.setEnabled(False)
+            self.worker.request_calibration()
+
+    @Slot(bool)
+    def on_calibration_state(self, active):
+        self.calibrate_btn.setEnabled(not active)
+
+    def select_team(self, team):
+        if self.worker is not None:
+            self.worker.set_selected_team(team)
+        self._set_team_button_style("A", self.team_a_btn.property("team_color") or "#ffff00", team == "A")
+        self._set_team_button_style("B", self.team_b_btn.property("team_color") or "#ff00ff", team == "B")
+
+    def _set_team_button_style(self, team, color, selected=False):
+        button = self.team_a_btn if team == "A" else self.team_b_btn
+        button.setProperty("team_color", color)
+        border = "3px solid white" if selected else "1px solid #555"
+        button.setStyleSheet(f"QPushButton {{ background-color: {color}; color: #111; border: {border}; padding: 4px 10px; }}")
 
     def stop_tracking(self):
         if self.worker is not None:
@@ -134,7 +176,16 @@ class MainWindow(QMainWindow):
 
         self._reposition_pitch_view()
 
-    @Slot(str)
+    @Slot(object)
+    def on_team_colors_ready(self, colors):
+        if not colors:
+            return
+        for team, color in colors.items():
+            b, g, r = (max(0, min(255, int(v))) for v in color)
+            self._set_team_button_style(team, f"rgb({r}, {g}, {b})", team == "A")
+        self.team_a_btn.setEnabled("A" in colors)
+        self.team_b_btn.setEnabled("B" in colors)
+
     def on_status(self, message):
         self.status_label.setText(message)
 
@@ -150,6 +201,9 @@ class MainWindow(QMainWindow):
         self.stop_btn.setEnabled(False)
         self.url_input.setEnabled(True)
         self.quality_combo.setEnabled(True)
+        self.team_a_btn.setEnabled(False)
+        self.team_b_btn.setEnabled(False)
+        self.calibrate_btn.setEnabled(False)
 
     def closeEvent(self, event):
         if self.worker is not None and self.worker.isRunning():

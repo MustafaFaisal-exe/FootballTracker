@@ -10,6 +10,31 @@ LOWER_GREEN = np.array([35, 40, 40])
 UPPER_GREEN = np.array([85, 255, 255])
 
 
+def _torso_pixels(frame, box, hsv_full):
+    x1, y1, w, h = box
+    hh, ww = h, w
+    if hh <= 0 or ww <= 0:
+        return None
+    ty1, ty2 = y1 + int(hh * 0.25), y1 + int(hh * 0.55)
+    tx1, tx2 = x1 + int(ww * 0.25), x1 + int(ww * 0.75)
+    bgr_torso = frame[ty1:ty2, tx1:tx2]
+    hsv_torso = hsv_full[ty1:ty2, tx1:tx2]
+    if bgr_torso.size == 0:
+        return None
+    green_mask = cv2.inRange(hsv_torso, LOWER_GREEN, UPPER_GREEN)
+    non_green = bgr_torso[green_mask == 0]
+    return non_green if len(non_green) >= 5 else bgr_torso.reshape(-1, 3)
+
+
+def extract_player_color(frame, box, hsv_full):
+    pixels = _torso_pixels(frame, box, hsv_full)
+    if pixels is None or len(pixels) == 0:
+        return np.array([0.0, 0.0, 0.0])
+    # The median is less affected by skin, shorts, and pitch pixels than a
+    # mean, so the sample better represents the jersey itself.
+    return np.median(pixels, axis=0)
+
+
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114)):
     shape = im.shape[:2]
     r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
@@ -70,18 +95,12 @@ def extract_detections(frame, session, input_name, output_names):
         if class_id != 0:
             continue
 
-        hh, ww = y2 - y1, x2 - x1
-        color = np.array([0.0, 0.0, 0.0])
-        if hh > 0 and ww > 0:
-            ty1, ty2 = y1 + int(hh * 0.25), y1 + int(hh * 0.55)
-            tx1, tx2 = x1 + int(ww * 0.25), x1 + int(ww * 0.75)
-            bgr_torso = frame[ty1:ty2, tx1:tx2]
-            hsv_torso = hsv_full[ty1:ty2, tx1:tx2]
-            if bgr_torso.size > 0:
-                green_mask = cv2.inRange(hsv_torso, LOWER_GREEN, UPPER_GREEN)
-                non_green = bgr_torso[green_mask == 0]
-                color = non_green.mean(axis=0) if len(non_green) >= 5 else bgr_torso.reshape(-1, 3).mean(axis=0)
-
-        detections.append({"box": box, "label": "player", "score": float(confidence), "color": color})
+        color = extract_player_color(frame, box, hsv_full)
+        detections.append({
+            "box": box,
+            "label": "player",
+            "score": float(confidence),
+            "color": color,
+        })
 
     return detections, yolo_time_ms

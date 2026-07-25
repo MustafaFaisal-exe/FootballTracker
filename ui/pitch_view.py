@@ -8,8 +8,8 @@ class PitchView(QWidget):
     def __init__(
         self,
         image_path: str,
-        width: int = 350,
-        height: int = 220,
+        width: int = 175,
+        height: int = 110,
         keep_aspect: bool = True,
         parent=None,
     ):

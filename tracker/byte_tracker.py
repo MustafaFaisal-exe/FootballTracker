@@ -27,18 +27,30 @@ class ByteTracker:
         for ti, di in matches:
             track = self.tracks[ti]
             d = high_dets[di]
-            track.update(compensate(track, d["box"]), d["score"], d.get("color"))
+            track.update(
+                compensate(track, d["box"]),
+                d["score"],
+                d.get("color"),
+                d.get("team"),
+            )
 
         remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
         matches2, _, _ = greedy_match(remaining_tracks, low_dets, self.iou_threshold)
         for ti, di in matches2:
             track = remaining_tracks[ti]
             d = low_dets[di]
-            track.update(compensate(track, d["box"]), d["score"], d.get("color"))
+            track.update(
+                compensate(track, d["box"]),
+                d["score"],
+                d.get("color"),
+                d.get("team"),
+            )
 
         for di in unmatched_dets:
             d = high_dets[di]
-            self.tracks.append(Track(d["box"], d["label"], d["score"], d.get("color")))
+            self.tracks.append(
+                Track(d["box"], d["label"], d["score"], d.get("color"), d.get("team"))
+            )
 
         self.tracks = [t for t in self.tracks if t.time_since_update <= self.max_age]
 
